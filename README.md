@@ -1,6 +1,6 @@
 <h1 align="center">
   <br>
-  <img src="https://storage.yandexcloud.net/cloud-www-assets/constructor/stardust/images/header/yandex-cloud-logo.svg" alt="Yandex Cloud" width="200">
+  <img src="https://upload.wikimedia.org/wikipedia/commons/7/7f/Yandex_Cloud_logo.svg" alt="Yandex Cloud" width="200">
   <br>
   Yandex Cloud CLI Skill for Claude Code
   <br>
