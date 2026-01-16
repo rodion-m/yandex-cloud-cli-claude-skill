@@ -1,6 +1,6 @@
 ---
 name: yandex-cloud-cli
-description: Yandex Cloud CLI (yc) command reference for managing cloud infrastructure. Use when working with Yandex Cloud resources: VMs (compute instances), disks, networks (VPC), security groups, profiles, or any yc commands. Triggers on tasks involving Yandex Cloud management, VM creation/configuration, network setup, or multi-region (Russia/Kazakhstan) cloud operations.
+description: Comprehensive Yandex Cloud CLI (yc) command reference for cloud infrastructure management. Use when working with VMs, disks, networks, storage, databases, Kubernetes, containers, IAM, secrets (Lockbox), certificates, DNS, load balancers, or any yc/AWS CLI commands for Yandex Cloud. Triggers on infrastructure provisioning, configuration, security, CI/CD automation, and multi-region (Russia/Kazakhstan) operations.
 ---
 
 # Yandex Cloud CLI
@@ -161,8 +161,163 @@ ssh yc-user@<EXTERNAL_IP>
 ssh -i ~/.ssh/id_ed25519 yc-user@<EXTERNAL_IP>
 ```
 
+## IAM & Service Accounts
+
+```bash
+# Create service account
+yc iam service-account create --name my-robot
+
+# Create API key
+yc iam api-key create --service-account-name my-robot
+
+# Create authorized key (for IAM tokens)
+yc iam key create --service-account-name my-robot --output key.json
+
+# Create static access key (for S3)
+yc iam access-key create --service-account-name my-robot
+
+# Assign role to folder
+yc resource-manager folder add-access-binding <folder-id> \
+  --role editor \
+  --service-account-name my-robot
+```
+
+## Object Storage (S3)
+
+```bash
+# Yandex CLI - Bucket operations
+yc storage bucket list
+yc storage bucket get <name> --full
+yc storage bucket update <name> --public-read
+
+# AWS CLI - Setup (use ru-central1 region)
+aws configure
+# Always add: --endpoint-url=https://storage.yandexcloud.net
+
+# AWS CLI - Object operations
+aws --endpoint-url=https://storage.yandexcloud.net \
+  s3 cp file.txt s3://bucket-name/
+aws --endpoint-url=https://storage.yandexcloud.net \
+  s3 ls --recursive s3://bucket-name
+```
+
+## Container Registry & Kubernetes
+
+```bash
+# Container Registry
+yc container registry list
+yc container registry create --name my-registry
+yc container registry configure-docker  # Auth helper
+
+# Push image
+docker tag my-app cr.yandex/<registry-id>/my-app:latest
+docker push cr.yandex/<registry-id>/my-app:latest
+
+# Kubernetes Cluster
+yc managed-kubernetes cluster list
+yc managed-kubernetes cluster create \
+  --name my-cluster \
+  --network-name default \
+  --zone kz1-a \
+  --service-account-name k8s-cluster \
+  --node-service-account-name k8s-nodes
+
+# Node group
+yc managed-kubernetes node-group create \
+  --cluster-name my-cluster \
+  --name worker-nodes \
+  --fixed-size 3
+```
+
+## Managed Databases
+
+```bash
+# PostgreSQL
+yc managed-postgresql cluster list
+yc managed-postgresql cluster create \
+  --name pg-cluster \
+  --environment production \
+  --network-name default \
+  --resource-preset s2.micro \
+  --disk-size 10 \
+  --disk-type network-ssd \
+  --postgresql-version 15
+
+# MySQL
+yc managed-mysql cluster create --name mysql-cluster
+
+# MongoDB
+yc managed-mongodb cluster create --name mongo-cluster
+
+# Backups
+yc managed-postgresql backup list
+yc managed-postgresql cluster restore --backup-id <id>
+```
+
+## Snapshots
+
+```bash
+# Create snapshot from disk
+yc compute snapshot create --name backup-$(date +%Y%m%d) --disk-id <disk-id>
+
+# List snapshots
+yc compute snapshot list
+
+# Create VM from snapshot
+yc compute instance create \
+  --name restored-vm \
+  --boot-disk snapshot-id=<snapshot-id>,size=50
+```
+
+## Security Services
+
+```bash
+# Lockbox (Secrets)
+yc lockbox secret create --name db-password --payload '[{"key":"password","text_value":"secret123"}]'
+yc lockbox payload get --name db-password --key password
+
+# Certificate Manager
+yc certificate-manager certificate list
+yc certificate-manager certificate request \
+  --name my-cert \
+  --domains example.com,www.example.com
+```
+
+## DNS
+
+```bash
+# Create DNS zone
+yc dns zone create --name my-zone --zone example.com. --public-visibility
+
+# Add A record
+yc dns zone add-records my-zone --record "@ 300 A 1.2.3.4"
+
+# Add CNAME record
+yc dns zone add-records my-zone --record "www 300 CNAME example.com."
+```
+
+## Load Balancers
+
+```bash
+# Network Load Balancer (Layer 4)
+yc load-balancer network-load-balancer create \
+  --name my-nlb \
+  --listener name=http,port=80,target-port=8080,external-ip-version=ipv4
+
+# Application Load Balancer (Layer 7)
+yc application-load-balancer load-balancer create \
+  --name my-alb \
+  --network-name default
+```
+
 ## Detailed References
 
-- [references/compute.md](references/compute.md) - Full compute operations, VM creation options
+- [references/compute.md](references/compute.md) - VM operations, platforms, disk types
 - [references/vpc.md](references/vpc.md) - Networking, security group rules
 - [references/profiles.md](references/profiles.md) - Multi-region profile setup
+- [references/iam.md](references/iam.md) - Service accounts, keys, roles, CI/CD
+- [references/storage.md](references/storage.md) - Object Storage, S3 API, lifecycle
+- [references/containers.md](references/containers.md) - Container Registry, Kubernetes
+- [references/databases.md](references/databases.md) - PostgreSQL, MySQL, MongoDB, snapshots
+- [references/security.md](references/security.md) - Lockbox secrets, Certificate Manager
+- [references/dns-lb.md](references/dns-lb.md) - DNS zones, Load Balancers

@@ -33,8 +33,15 @@ This skill extends [Claude Code](https://claude.ai/code) with specialized knowle
 
 ## Features
 
-- **Compute Operations** — VM lifecycle management, disk operations, snapshots
+- **Compute Operations** — VM lifecycle management, disk operations, snapshots, images
 - **Networking (VPC)** — Networks, subnets, security groups with rule syntax
+- **IAM & Service Accounts** — Authentication, API keys, role assignments, CI/CD automation
+- **Object Storage** — S3-compatible storage, bucket management, lifecycle policies
+- **Container Services** — Container Registry, Managed Kubernetes clusters
+- **Managed Databases** — PostgreSQL, MySQL, MongoDB with backup/restore
+- **Security Services** — Lockbox secrets management, Certificate Manager
+- **DNS Management** — DNS zones, record sets (A, CNAME, TXT, MX, etc.)
+- **Load Balancers** — Network (L4) and Application (L7) load balancing
 - **Multi-Region Support** — Russia and Kazakhstan endpoints and profiles
 - **Profile Management** — Switch between environments seamlessly
 - **Quick Reference** — Common commands and patterns at your fingertips
@@ -74,16 +81,28 @@ Once installed, Claude Code will automatically use this skill when you ask about
 
 ### Quick Reference
 
-| Operation | Command |
-|-----------|---------|
-| List VMs | `yc compute instance list` |
-| Get VM details | `yc compute instance get <id>` |
-| Start/Stop VM | `yc compute instance start/stop <id>` |
-| List disks | `yc compute disk list` |
-| Resize disk | `yc compute disk resize <id> --size 100` |
-| List networks | `yc vpc network list` |
-| List security groups | `yc vpc security-group list` |
-| Switch profile | `yc config profile activate <name>` |
+| Category | Operation | Command |
+|----------|-----------|---------|
+| **Compute** | List VMs | `yc compute instance list` |
+| | Start/Stop VM | `yc compute instance start/stop <id>` |
+| | Create snapshot | `yc compute snapshot create --disk-id <id>` |
+| **Storage** | List buckets | `yc storage bucket list` |
+| | Upload to S3 | `aws --endpoint-url=https://storage.yandexcloud.net s3 cp file.txt s3://bucket/` |
+| **IAM** | Create service account | `yc iam service-account create --name my-sa` |
+| | Create API key | `yc iam api-key create --service-account-name my-sa` |
+| **Containers** | List registries | `yc container registry list` |
+| | Configure Docker | `yc container registry configure-docker` |
+| **Kubernetes** | List clusters | `yc managed-kubernetes cluster list` |
+| | Create node group | `yc managed-kubernetes node-group create` |
+| **Databases** | Create PostgreSQL | `yc managed-postgresql cluster create` |
+| | List backups | `yc managed-postgresql backup list` |
+| **Security** | Create secret | `yc lockbox secret create` |
+| | Get secret value | `yc lockbox payload get --name <name>` |
+| **DNS** | Create zone | `yc dns zone create` |
+| | Add record | `yc dns zone add-records <zone> --record "..."` |
+| **Networking** | List networks | `yc vpc network list` |
+| | Create security group | `yc vpc security-group create` |
+| **Profiles** | Switch profile | `yc config profile activate <name>` |
 
 ### Region Endpoints
 
@@ -100,7 +119,13 @@ yandex-cloud-cli/
 └── references/
     ├── compute.md        # VM operations, platforms, disk types
     ├── vpc.md            # Networking, security group rules
-    └── profiles.md       # Multi-region profile configuration
+    ├── profiles.md       # Multi-region profile configuration
+    ├── iam.md            # Service accounts, keys, roles, CI/CD
+    ├── storage.md        # Object Storage, S3 API, lifecycle policies
+    ├── containers.md     # Container Registry, Kubernetes
+    ├── databases.md      # PostgreSQL, MySQL, MongoDB, snapshots
+    ├── security.md       # Lockbox secrets, Certificate Manager
+    └── dns-lb.md         # DNS zones, Load Balancers
 ```
 
 ## Requirements
