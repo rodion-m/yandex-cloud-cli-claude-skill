@@ -48,23 +48,26 @@ This skill extends [Claude Code](https://claude.ai/code) with specialized knowle
 
 ## Installation
 
-### Option 1: Install via Claude Code CLI
+### User Scope (Available in All Projects)
 
 ```bash
-claude skill install yandex-cloud-cli-claude-skill
-```
-
-### Option 2: Manual Installation
-
-1. Clone this repository:
-```bash
+# Clone and copy to user skills directory
 git clone https://github.com/rodion-m/yandex-cloud-cli-claude-skill.git
-```
-
-2. Copy to your Claude skills directory:
-```bash
 cp -r yandex-cloud-cli-claude-skill ~/.claude/skills/yandex-cloud-cli
 ```
+
+### Project Scope (Available Only in This Repository)
+
+```bash
+# Clone and copy to project skills directory
+git clone https://github.com/rodion-m/yandex-cloud-cli-claude-skill.git
+mkdir -p .claude/skills
+cp -r yandex-cloud-cli-claude-skill .claude/skills/yandex-cloud-cli
+```
+
+### Verify Installation
+
+The skill will be automatically loaded when Claude Code detects relevant Yandex Cloud tasks.
 
 ## Usage
 
