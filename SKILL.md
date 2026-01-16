@@ -8,12 +8,18 @@ description: Comprehensive Yandex Cloud CLI (yc) command reference for cloud inf
 ## Quick Reference
 
 ```bash
-# Installation
-curl -sSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
+# Installation (see references/installation.md for full guide)
+curl -sSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash  # Linux/macOS
+# Windows: iex (New-Object System.Net.WebClient).DownloadString('https://storage.yandexcloud.net/yandexcloud-yc/install.ps1')
 
 # Initialize (interactive)
 yc init              # Russia region
 yc init --region=kz  # Kazakhstan region
+
+# Authentication
+# OAuth: https://oauth.yandex.ru/authorize?response_type=token&client_id=1a6990aa636648e9b2ef855fa7bec2fb
+yc config set token <oauth-token>
+# Service account: yc config set service-account-key key.json
 
 # Profile management
 yc config profile list
@@ -312,6 +318,7 @@ yc application-load-balancer load-balancer create \
 
 ## Detailed References
 
+- [references/installation.md](references/installation.md) - Installation, setup, authentication (all OS)
 - [references/compute.md](references/compute.md) - VM operations, platforms, disk types
 - [references/vpc.md](references/vpc.md) - Networking, security group rules
 - [references/profiles.md](references/profiles.md) - Multi-region profile setup

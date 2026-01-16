@@ -117,6 +117,7 @@ Once installed, Claude Code will automatically use this skill when you ask about
 yandex-cloud-cli/
 ├── SKILL.md              # Main skill file with quick reference
 └── references/
+    ├── installation.md   # Installation, setup, authentication (all OS)
     ├── compute.md        # VM operations, platforms, disk types
     ├── vpc.md            # Networking, security group rules
     ├── profiles.md       # Multi-region profile configuration
@@ -131,7 +132,25 @@ yandex-cloud-cli/
 ## Requirements
 
 - [Claude Code CLI](https://claude.ai/code)
-- [Yandex Cloud CLI](https://yandex.cloud/docs/cli/quickstart) installed and configured
+- [Yandex Cloud CLI](https://yandex.cloud/docs/cli/quickstart) — See installation guide below
+
+### Installing Yandex Cloud CLI
+
+**Linux/macOS:**
+```bash
+curl -sSL https://storage.yandexcloud.net/yandexcloud-yc/install.sh | bash
+source ~/.bashrc  # or ~/.zshrc
+yc init
+```
+
+**Windows (PowerShell as Administrator):**
+```powershell
+iex (New-Object System.Net.WebClient).DownloadString('https://storage.yandexcloud.net/yandexcloud-yc/install.ps1')
+# Restart PowerShell, then run:
+yc init
+```
+
+**For complete installation, authentication, and troubleshooting guide, see [references/installation.md](references/installation.md)**
 
 ## Contributing
 
