@@ -16,7 +16,15 @@ Complete reference for managing Container Registry and Managed Kubernetes using 
 - [Managed Kubernetes](#managed-kubernetes)
   - [Prerequisites](#prerequisites)
   - [Cluster Management](#cluster-management)
+    - [List, Get, Credentials](#list-clusters)
+    - [Create (Zonal & Regional)](#create-cluster)
+    - [Stop/Start, Version Management](#stop-and-start-cluster)
+    - [Update, Delete](#update-cluster)
   - [Node Group Management](#node-group-management)
+    - [List, Get](#list-node-groups)
+    - [Create (Basic, Auto-scale, Taints, Preemptible, GPU, Multi-zone)](#create-node-group)
+    - [Platform IDs](#platform-ids)
+    - [Update, Delete](#update-node-group)
   - [Common Workflows](#common-workflows)
 
 ---
@@ -220,7 +228,61 @@ Two service accounts are required:
 
 ### Cluster Management
 
+#### List Clusters
+
+```bash
+# List all clusters in current folder
+yc managed-kubernetes cluster list
+
+# List clusters in specific folder
+yc managed-kubernetes cluster list --folder-id <folder-id>
+```
+
+#### Get Cluster Details
+
+```bash
+# Get cluster by name
+yc managed-kubernetes cluster get <cluster-name>
+
+# Get cluster by ID
+yc managed-kubernetes cluster get --id <cluster-id>
+```
+
+#### Get Cluster Credentials (kubeconfig)
+
+```bash
+# External access (public IP)
+yc managed-kubernetes cluster get-credentials <cluster-name> --external
+
+# Internal access (from within VPC)
+yc managed-kubernetes cluster get-credentials <cluster-name> --internal
+
+# Custom kubeconfig path
+yc managed-kubernetes cluster get-credentials <cluster-name> \
+  --external \
+  --kubeconfig /custom/path/kubeconfig
+
+# Force recreate credentials
+yc managed-kubernetes cluster get-credentials <cluster-name> \
+  --external \
+  --force-recreate
+
+# Custom context name
+yc managed-kubernetes cluster get-credentials <cluster-name> \
+  --external \
+  --context-name my-prod-cluster
+```
+
+**Flags:**
+- `--external` - Configure access using external (public) IP
+- `--internal` - Configure access using internal IP (requires VPC access)
+- `--kubeconfig <path>` - Custom kubeconfig location (default: `~/.kube/config`)
+- `--force-recreate` - Force recreate even if credentials exist
+- `--context-name <name>` - Custom kubectl context name
+
 #### Create Cluster
+
+##### Zonal Master (Single Zone)
 
 Complete example with all common parameters:
 
@@ -266,25 +328,113 @@ yc managed-kubernetes cluster create \
 --enable-network-policy
 ```
 
+##### Regional Master (Three Zones, High Availability)
+
+```bash
+yc managed-kubernetes cluster create \
+  --name prod-k8s-regional \
+  --network-name production \
+  --master-location zone=ru-central1-a,subnet-name=prod-subnet-a \
+  --master-location zone=ru-central1-b,subnet-name=prod-subnet-b \
+  --master-location zone=ru-central1-d,subnet-name=prod-subnet-d \
+  --public-ip \
+  --release-channel stable \
+  --version 1.28 \
+  --service-account-name k8s-prod-sa \
+  --node-service-account-name k8s-prod-node-sa
+```
+
+**Regional Master:**
+- `--master-location` - Must specify exactly 3 locations (one per AZ)
+- Format: `zone=<zone>,subnet-name=<subnet>`
+- Provides high availability across zones
+- **Cannot use** with `--zone` parameter (mutually exclusive)
+
+**Master Type Comparison:**
+
+| Type | Availability Zones | Use Case | Downtime Risk |
+|------|-------------------|----------|---------------|
+| Zonal | 1 | Development, testing | Higher (single AZ) |
+| Regional | 3 | Production | Lower (multi-AZ) |
+
+#### Stop and Start Cluster
+
+```bash
+# Stop cluster (stops all node groups)
+yc managed-kubernetes cluster stop <cluster-name>
+
+# Start cluster (starts all node groups)
+yc managed-kubernetes cluster start <cluster-name>
+```
+
+#### Version Management
+
+```bash
+# Update to specific Kubernetes version
+yc managed-kubernetes cluster update <cluster-name> --version 1.28
+
+# Update to latest revision
+yc managed-kubernetes cluster update <cluster-name> --latest-revision
+```
+
+#### List Cluster Resources
+
+```bash
+# List all node groups in cluster
+yc managed-kubernetes cluster list-node-groups <cluster-name>
+
+# List all nodes across cluster
+yc managed-kubernetes cluster list-nodes <cluster-name>
+
+# List operations
+yc managed-kubernetes cluster list-operations <cluster-name>
+```
+
 #### Update Cluster
 
 ```bash
 yc managed-kubernetes cluster update <cluster_id> \
   --new-name <new_name> \
-  --description <description>
+  --description <description> \
+  --version 1.28
 ```
 
 #### Delete Cluster
 
 ```bash
-yc managed-kubernetes cluster delete <cluster_id>
+yc managed-kubernetes cluster delete <cluster-id>
+
+# Async deletion
+yc managed-kubernetes cluster delete <cluster-name> --async
 ```
 
 ---
 
 ### Node Group Management
 
+#### List Node Groups
+
+```bash
+# List all node groups
+yc managed-kubernetes node-group list
+
+# List node groups for specific cluster
+yc managed-kubernetes node-group list --cluster-name <cluster-name>
+```
+
+#### Get Node Group Details
+
+```bash
+# Get by name
+yc managed-kubernetes node-group get <node-group-name>
+
+# Get by ID
+yc managed-kubernetes node-group get --id <node-group-id>
+```
+
 #### Create Node Group
+
+##### Basic Node Group with Fixed Size
 
 Create a node group with labels:
 
@@ -303,6 +453,122 @@ yc managed-kubernetes node-group create \
 - `--disk-type` - Disk type (network-ssd/network-hdd)
 - `--fixed-size` - Fixed number of nodes
 - `--node-labels` - Kubernetes labels (key=value,key=value)
+
+##### Auto-Scaling Node Group
+
+```bash
+yc managed-kubernetes node-group create \
+  --name autoscale-ng \
+  --cluster-name my-cluster \
+  --platform-id standard-v3 \
+  --cores 4 \
+  --memory 8 \
+  --disk-type network-ssd \
+  --disk-size 96 \
+  --auto-scale min=2,max=10,initial=3 \
+  --location zone=ru-central1-a,subnet-name=default-ru-central1-a
+```
+
+**Auto-scale parameters:**
+- `min` - Minimum nodes
+- `max` - Maximum nodes
+- `initial` - Initial node count
+
+##### Node Group with Taints
+
+```bash
+yc managed-kubernetes node-group create \
+  --name tainted-ng \
+  --cluster-name my-cluster \
+  --platform-id standard-v3 \
+  --cores 4 \
+  --memory 8 \
+  --disk-type network-ssd \
+  --disk-size 64 \
+  --fixed-size 2 \
+  --location zone=ru-central1-a,subnet-name=default-ru-central1-a \
+  --node-labels environment=production,tier=database \
+  --node-taints dedicated=database:NoSchedule
+```
+
+**Taint effects:**
+- `NoSchedule` - Prohibit new pods
+- `PreferNoSchedule` - Avoid if possible
+- `NoExecute` - Evict existing pods
+
+##### Preemptible Nodes (Cost-Optimized)
+
+```bash
+yc managed-kubernetes node-group create \
+  --name preemptible-ng \
+  --cluster-name my-cluster \
+  --platform-id standard-v3 \
+  --preemptible \
+  --cores 2 \
+  --memory 4 \
+  --disk-type network-ssd \
+  --disk-size 32 \
+  --fixed-size 3 \
+  --location zone=ru-central1-a,subnet-name=default-ru-central1-a
+```
+
+**Preemptible nodes:**
+- Significantly cheaper than regular VMs
+- Can be stopped by Yandex Cloud with 30-second warning
+- Suitable for fault-tolerant workloads
+
+##### GPU Node Group
+
+```bash
+yc managed-kubernetes node-group create \
+  --name gpu-ng \
+  --cluster-name my-cluster \
+  --platform-id gpu-standard-v3 \
+  --gpus 1 \
+  --cores 8 \
+  --memory 96 \
+  --disk-type network-ssd \
+  --disk-size 256 \
+  --fixed-size 1 \
+  --location zone=ru-central1-a,subnet-name=default-ru-central1-a \
+  --node-labels workload=ml,gpu=true \
+  --node-taints nvidia.com/gpu=present:NoSchedule
+```
+
+**GPU requirements:**
+- Platform: `gpu-standard-v3` or `gpu-standard-v2`
+- Available zones: `ru-central1-a`, `ru-central1-b`
+- Pre-installed NVIDIA drivers and CUDA
+- Kubernetes 1.16+
+
+##### Multi-Zone Node Group
+
+```bash
+yc managed-kubernetes node-group create \
+  --name multi-zone-ng \
+  --cluster-name my-cluster \
+  --platform-id standard-v3 \
+  --cores 4 \
+  --memory 8 \
+  --disk-type network-ssd \
+  --disk-size 64 \
+  --fixed-size 6 \
+  --location zone=ru-central1-a,subnet-name=subnet-a \
+  --location zone=ru-central1-b,subnet-name=subnet-b \
+  --location zone=ru-central1-d,subnet-name=subnet-d
+```
+
+Nodes distributed evenly across specified zones for high availability.
+
+#### Platform IDs
+
+| Platform ID | CPU | Use Case |
+|-------------|-----|----------|
+| `standard-v2` | Intel Cascade Lake | General purpose |
+| `standard-v3` | Intel Ice Lake | Modern general purpose (recommended) |
+| `highfreq-v3` | High-freq Intel Ice Lake | CPU-intensive |
+| `gpu-standard-v3` | NVIDIA GPU | ML/AI workloads |
+| `gpu-standard-v2` | NVIDIA GPU (older) | Legacy GPU |
 
 #### Update Node Group
 
@@ -375,6 +641,29 @@ yc managed-kubernetes node-group add-node-labels \
 yc managed-kubernetes node-group remove-node-labels \
   --id <node_group_id> \
   --labels <label_key>,...
+```
+
+#### List Node Group Resources
+
+```bash
+# List nodes in specific node group
+yc managed-kubernetes node-group list-nodes <node-group-name>
+
+# List operations for node group
+yc managed-kubernetes node-group list-operations <node-group-name>
+```
+
+#### Delete Node Group
+
+```bash
+# Delete node group
+yc managed-kubernetes node-group delete <node-group-name>
+
+# Delete by ID
+yc managed-kubernetes node-group delete --id <node-group-id>
+
+# Async deletion
+yc managed-kubernetes node-group delete <node-group-name> --async
 ```
 
 ---
@@ -515,24 +804,60 @@ EOF
 
 ### Kubernetes Commands
 
+#### Cluster Operations
+
 | Command | Description |
 |---------|-------------|
-| `yc managed-kubernetes cluster create` | Create cluster |
+| `yc managed-kubernetes cluster list` | List clusters |
+| `yc managed-kubernetes cluster get <name>` | Get cluster details |
+| `yc managed-kubernetes cluster get-credentials <name> --external` | Get kubeconfig (external access) |
+| `yc managed-kubernetes cluster create` | Create cluster (zonal or regional) |
 | `yc managed-kubernetes cluster update <id>` | Update cluster |
+| `yc managed-kubernetes cluster start <name>` | Start cluster |
+| `yc managed-kubernetes cluster stop <name>` | Stop cluster |
 | `yc managed-kubernetes cluster delete <id>` | Delete cluster |
+| `yc managed-kubernetes cluster list-node-groups <name>` | List node groups in cluster |
+| `yc managed-kubernetes cluster list-nodes <name>` | List all nodes in cluster |
+| `yc managed-kubernetes cluster list-operations <name>` | List cluster operations |
+
+#### Node Group Operations
+
+| Command | Description |
+|---------|-------------|
+| `yc managed-kubernetes node-group list` | List node groups |
+| `yc managed-kubernetes node-group get <name>` | Get node group details |
 | `yc managed-kubernetes node-group create` | Create node group |
 | `yc managed-kubernetes node-group update <id>` | Update node group |
+| `yc managed-kubernetes node-group delete <name>` | Delete node group |
+| `yc managed-kubernetes node-group list-nodes <name>` | List nodes in group |
 | `yc managed-kubernetes node-group add-labels` | Add cloud labels |
-| `yc managed-kubernetes node-group add-node-labels` | Add K8s labels |
-| `yc managed-kubernetes cluster get-credentials <name>` | Get kubeconfig |
+| `yc managed-kubernetes node-group add-node-labels` | Add Kubernetes labels |
+| `yc managed-kubernetes node-group remove-node-labels` | Remove Kubernetes labels |
+| `yc managed-kubernetes node-group list-operations <name>` | List node group operations |
 
 ---
 
 ## Notes
 
+### Container Registry
 - **Container Registry address:** `cr.yandex`
 - **Credential helper:** Docker must run without `sudo` for `docker-credential-yc` to work
-- **Service accounts:** Two separate accounts required for Kubernetes (cluster + nodes)
-- **IP ranges:** Ensure cluster/service IPv4 ranges don't overlap with network subnets
 - **Vulnerability scanning:** Available with `--secure` flag; incurs additional charges
 - **Repository format:** `<registry_id>/<image_name>`
+
+### Kubernetes Clusters
+- **Service accounts:** Two separate accounts required (cluster + nodes)
+- **IP ranges:** Cluster and service IPv4 ranges must NOT overlap with network subnets
+- **Master types:**
+  - **Zonal** - Single AZ, for development/testing
+  - **Regional** - 3 AZs, for production high availability
+- **kubeconfig:** Default location `~/.kube/config`, use `--external` for public access
+- **Versions:** Update channels: `rapid` (early access), `regular` (balanced), `stable` (production)
+
+### Node Groups
+- **Platform IDs:** Use `standard-v3` (Intel Ice Lake) for modern workloads
+- **Preemptible nodes:** 70% cheaper but can be stopped by Yandex Cloud
+- **GPU support:** Available in `ru-central1-a` and `ru-central1-b` zones
+- **Taints:** Use `NoSchedule`, `PreferNoSchedule`, or `NoExecute`
+- **Auto-scaling:** Configure with `min`, `max`, and `initial` parameters
+- **Multi-zone:** Specify multiple `--location` flags for zone distribution
